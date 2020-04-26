@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MercaloLibre Ejercicio</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+</head>
+<body>
+
+    <h1>MercaloLibre Ejercicio - Santiago Vidal 2020</h1>
+    <p>...</p>
+
+    <label for="ip">IP</label><input type="text" id="ip" value="216.58.222.36"/>
+    <input type="button" onclick="doSubmitIP()" value="Obtener datos"/>
+
+    <div id="results">
+        <p id="content"></p>
+    </div>
+
+    <h2>Stats</h2>
+    <input type="button" onclick="doGetNearest()" value="Obtener mas cercano"/>
+    <input type="button" onclick="doGetFarthest()" value="Obtener mas lejano"/>
+    <input type="button" onclick="doGetAverage()" value="Obtener promedio"/>
+
+    <div id="stats_results">
+        <p id="content"></p>
+    </div>
+
+    <script>
+
+        const DEFAULT_ORIGIN_LOCATION_CODE = 'BA';
+
+        function doSubmitIP() {
+
+            var self = this;
+            $.ajax({
+                type: "GET",
+                url: "/api/ipinfo",
+                data: {
+                    ipAddress: $('#ip').val()
+                },
+                contentType : 'application/json',
+                success: function(data) {
+
+                    //just test code
+                    var result = "Country: " + data.country;
+                    result += '\n' + "XX:" + data.XX;
+
+                    $('#content').html(result);
+                }
+            });
+
+        }
+
+        function doGetNearest() {
+            getStats("/api/stats/nearest", $('#stats_results'), 'Nearest');
+        }
+
+        function doGetFarthest() {
+            getStats("/api/stats/farthest", $('#stats_results'), 'Farthest');
+        }
+
+        function doGetAverage() {
+            getStats("/api/stats/avg", $('#stats_results'), 'Average');
+        }
+
+        function getStats(url, target, caption) {
+
+            $.ajax({
+                type: "GET",
+                url: url,
+                data: {
+                    from: DEFAULT_ORIGIN_LOCATION_CODE,
+                },
+                contentType : 'application/json',
+                success: function(data) {
+                    target.html('Caption: ' + caption + ' - Origin: ' + data.origin + ' - Distance:' + data.distance);
+                }
+            });
+        }
+
+    </script>
+
+</body>
+</html>
