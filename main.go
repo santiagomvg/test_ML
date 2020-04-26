@@ -3,22 +3,18 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"log"
-	"net/http"
 )
 
 func main() {
 
 	router := gin.New()
 	router.Use(gin.Logger())
-	router.LoadHTMLGlob("templates/*.html")
-	router.Static("/static", "static")
-
 	router.GET("/ping", func(c *gin.Context) {
 		c.Writer.Write([]byte("HI!"))
 	})
 
 	router.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", nil)
+		c.File("index.html")
 	})
 
 	router.GET("/api/ipinfo", handleIPInfo)

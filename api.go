@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"math"
+	"net"
 	"net/http"
-	"strconv"
-	"strings"
 )
 
 const buenosAiresLat = 0
@@ -38,7 +37,7 @@ func handleIPInfo(c *gin.Context) {
 		return
 	}
 
-	usdValue, err := getCountryUSDValue(&cinfo)
+	usdValue, err := getCountryUSDValue(cinfo)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
@@ -59,10 +58,11 @@ func handleIPInfo(c *gin.Context) {
 	c.JSON(200, &out)
 }
 
-func getCountryCodeFromIP(ip string) (string, error) {
+func getCountryCodeFromIP(ipStr string) (string, error) {
 
-	if err := validateIP(ip); err != nil {
-		return "", err
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return "", errors.New("invalid ip address")
 	}
 
 	var data IPInfo
@@ -101,20 +101,4 @@ func getCountryUSDValue(cinfo *CountryInfo) (float64, error) {
 
 	usdBasedValue := (1 - math.Abs(1-usd)) * local
 	return usdBasedValue, nil
-}
-
-func validateIP(ip string) error {
-
-	values := strings.Split(ip, ".")
-	if len(values) == 5 {
-
-		for _, n := range values {
-			subV, err := strconv.Atoi(n)
-			if err != nil || subV < 0 || subV > 255 {
-				return errors.New("invalid ipv4 value")
-			}
-		}
-		return nil
-	}
-	return errors.New("invalid ipv4 value")
 }
