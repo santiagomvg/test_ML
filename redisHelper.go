@@ -1,11 +1,8 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
-	"strings"
 	"time"
 )
 
@@ -43,25 +40,17 @@ func (rs redisSession) Close() {
 	rs.conn.Close()
 }
 
-func (rs redisSession) HGET(key string, values string, out interface{}) error {
-	reply, err := redis.Values(rs.conn.Do("HMGET", key, "value"))
+func (rs redisSession) HGETALL(key string, out interface{}) error {
+	values, err := redis.Values(rs.conn.Do("HGETALL", key))
 	if err != nil {
 		return err
 	}
-
-	var jsonData string
-	if _, err := redis.Scan(reply, &jsonData); err != nil {
-		return err
-	}
-	return json.NewDecoder(strings.NewReader(jsonData)).Decode(&out)
+	err = redis.ScanStruct(values, out)
+	return err
 }
 
-func (rs redisSession) HSET(key string, values string, data interface{}) error {
-	jsonData := &bytes.Buffer{}
-	if err := json.NewEncoder(jsonData).Encode(data); err != nil {
-		return err
-	}
-	_, err := rs.conn.Do("HSET", key, "value", jsonData)
+func (rs redisSession) HMSET(key string, data interface{}) error {
+	_, err := rs.conn.Do("HMSET", redis.Args{}.Add(key).AddFlat(data)...)
 	return err
 }
 
