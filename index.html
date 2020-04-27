@@ -14,7 +14,7 @@
     <input type="button" onclick="doSubmitIP()" value="Obtener datos"/>
 
     <div id="results">
-        <p id="content"></p>
+        <pre id="content"></pre>
     </div>
 
     <h2>Stats</h2>
@@ -22,59 +22,57 @@
     <input type="button" onclick="doGetFarthest()" value="Obtener mas lejano"/>
     <input type="button" onclick="doGetAverage()" value="Obtener promedio"/>
 
-    <div id="stats_results">
-        <p id="content"></p>
-    </div>
+    <pre id="stats_results">
+    </pre>
 
     <script>
 
-        const DEFAULT_ORIGIN_LOCATION_CODE = 'BA';
+        const DEFAULT_ORIGIN_LOCATION_CODE = 'ARG:BA';
 
         function doSubmitIP() {
 
-            var self = this;
-            $.ajax({
-                type: "GET",
-                url: "/api/ipinfo",
-                data: {
-                    ipAddress: $('#ip').val()
-                },
-                contentType : 'application/json',
-                success: function(data) {
-
-                    //just test code
-                    var result = "Country: " + data.country;
-                    result += '\n' + "XX:" + data.XX;
-
-                    $('#content').html(result);
-                }
+            getStats("/api/ipinfo", { ipAddress: $('#ip').val() }, $('#content'), function(data) {
+                return 'Country: ' + data.countryName + '\n' +
+                    'Code: ' + data.countryCode + '\n' +
+                    'Distance: ' + data.distance + ' ' + data.distanceUnit + '\n' +
+                    'Lat/Lng: ' + data.latitude + '/' + data.longitude + '\n' +
+                    'Currency: ' + data.currency + '\n' +
+                    '1 USD = ' + data.usdValue + ' ' + data.currency;
             });
-
         }
 
         function doGetNearest() {
-            getStats("/api/stats/nearest", $('#stats_results'), 'Nearest');
+            getStats("/api/stats/nearest", {}, $('#stats_results'), function(data) {
+                return 'Nearest: ' + data.country + '\n' +
+                       'Distance: ' + data.distance;
+            });
         }
 
         function doGetFarthest() {
-            getStats("/api/stats/farthest", $('#stats_results'), 'Farthest');
+            getStats("/api/stats/farthest", {}, $('#stats_results'), function(data) {
+                return 'Farthest: ' + data.country + '\n' +
+                       'Distance: ' + data.distance;
+            });
         }
 
         function doGetAverage() {
-            getStats("/api/stats/avg", $('#stats_results'), 'Average');
+            getStats("/api/stats/avg", {}, $('#stats_results'), function(data) {
+                return '';
+            });
         }
 
-        function getStats(url, target, caption) {
+        function getStats(url, data, target, onDataText) {
 
+            target.html('Loading...');
+
+            data.from = DEFAULT_ORIGIN_LOCATION_CODE;
             $.ajax({
                 type: "GET",
                 url: url,
-                data: {
-                    from: DEFAULT_ORIGIN_LOCATION_CODE,
-                },
+                data: data,
                 contentType : 'application/json',
                 success: function(data) {
-                    target.html('Caption: ' + caption + ' - Origin: ' + data.origin + ' - Distance:' + data.distance);
+                    target.html(onDataText(data));
                 }
             });
         }
