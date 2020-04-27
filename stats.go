@@ -6,8 +6,10 @@ import (
 	"net/http"
 )
 
-const nearestCountryKey = "stats:country:nearest"
-const farthestCountryKey = "stats:country:farthest"
+const nearestCountryKey = "stats:country:nearest:%s"       //nearest to country %s
+const farthestCountryKey = "stats:country:farthest:%s"     //farthest to country %s
+const countriesRequestsSetKey = "stats:requests:countries" //redis set of all country codes that called
+const countryRequestCount = "stats:request:country:%s"     //request count for country %$
 
 type countryStat struct {
 	Name     string  `json:"name"`
@@ -44,7 +46,7 @@ func getCountryDistance(key string, from string) (*countryStat, error) {
 	defer s.Close()
 
 	var stat countryStat
-	key = fmt.Sprintf(key+":%s:%s", from)
+	key = fmt.Sprintf(key, from)
 	if err := s.HGET(key, "country,distance", &stat); err != nil {
 		return nil, err
 	}
@@ -53,6 +55,7 @@ func getCountryDistance(key string, from string) (*countryStat, error) {
 
 func updateStatsForCountry(distance float64, fromGeoLocationCode string, cinfo *CountryInfo) {
 
+	//TODO: meter todo en go funcs individuales?
 	stat, err := getCountryDistance(nearestCountryKey, fromGeoLocationCode)
 	if err == nil {
 		if distance < stat.Distance {
@@ -74,4 +77,10 @@ func updateStatsForCountry(distance float64, fromGeoLocationCode string, cinfo *
 			s.HSET(farthestCountryKey, "country,distance", &stat)
 		}
 	}
+
+	s := DB.Session()
+	defer s.Close()
+
+	s.SetADD(countriesRequestsSetKey, cinfo.Alpha3Code)
+	s.INC(fmt.Sprintf(countryRequestCount, cinfo.Alpha3Code))
 }

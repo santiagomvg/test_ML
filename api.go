@@ -54,7 +54,7 @@ func handleIPInfo(c *gin.Context) {
 		USDValue:    usdValue,
 	}
 
-	//go updateStatsForCountry(dist, cinfo)
+	go updateStatsForCountry(dist, "ARG:BA", cinfo)
 	c.JSON(200, &out)
 }
 
@@ -88,10 +88,16 @@ func getCountryUSDValue(cinfo *CountryInfo) (float64, error) {
 		return 0, err
 	}
 
+	//esta api en su version gratuita siempre devuelve cotizaciones con base en euros. Convierto a USD de ser necesario
 	localCurrency := cinfo.Currencies[0].Code
-	if localCurrency != "USD" {
+	if localCurrency == "EUR" {
+		return data.Rates["USD"], nil
 
-		//esta api en su version gratis siempre devuelve cotizaciones con base en euros. Convierto a USD
+	} else if localCurrency == "USD" {
+		return 1, nil
+
+	} else {
+
 		local, exists := data.Rates[localCurrency]
 		if !exists {
 			return 0, nil
@@ -103,8 +109,5 @@ func getCountryUSDValue(cinfo *CountryInfo) (float64, error) {
 
 		usdBasedValue := math.Round(((1-math.Abs(1-usd))*local)*100) / 100
 		return usdBasedValue, nil
-
-	} else {
-		return 1, nil
 	}
 }

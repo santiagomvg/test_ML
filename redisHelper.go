@@ -65,6 +65,16 @@ func (rs redisSession) HSET(key string, values string, data interface{}) error {
 	return err
 }
 
+func (rs redisSession) INC(key string) error {
+	_, err := rs.conn.Do("INCR", key)
+	return err
+}
+
+func (rs redisSession) SetADD(key string, value string) error {
+	_, err := rs.conn.Do("SADD", key, value)
+	return err
+}
+
 func (rs *redisSession) ExpiresAt(key string, t time.Time) error {
 	_, err := rs.conn.Do("EXPIREAT", key, t.Unix())
 	return err
