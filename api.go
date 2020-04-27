@@ -9,8 +9,8 @@ import (
 	"net/http"
 )
 
-const buenosAiresLat = 0
-const buenosAiresLng = 0
+const buenosAiresLat = -34.6131516
+const buenosAiresLng = -58.3772316
 
 type APIResult struct {
 	CountryName string  `json:"countryName"`
@@ -24,10 +24,10 @@ type APIResult struct {
 
 func handleIPInfo(c *gin.Context) {
 
-	ip, _ := c.GetQuery("ip")
+	ip, _ := c.GetQuery("ipAddress")
 	ccode, err := getCountryCodeFromIP(ip)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
 		return
 	}
 
@@ -54,7 +54,7 @@ func handleIPInfo(c *gin.Context) {
 		USDValue:    usdValue,
 	}
 
-	go updateStatsForCountry(dist, cinfo)
+	//go updateStatsForCountry(dist, cinfo)
 	c.JSON(200, &out)
 }
 
@@ -88,17 +88,23 @@ func getCountryUSDValue(cinfo *CountryInfo) (float64, error) {
 		return 0, err
 	}
 
-	//esta api en su version gratis siempre devuelve cotizaciones con base en euros. Convierto a USD
-	local, exists := data.Rates[cinfo.Currencies[0].Code]
-	if !exists {
-		return 0, nil
-	}
+	localCurrency := cinfo.Currencies[0].Code
+	if localCurrency != "USD" {
 
-	usd, exists := data.Rates["USD"]
-	if !exists {
-		return 0, nil
-	}
+		//esta api en su version gratis siempre devuelve cotizaciones con base en euros. Convierto a USD
+		local, exists := data.Rates[localCurrency]
+		if !exists {
+			return 0, nil
+		}
+		usd, exists := data.Rates["USD"]
+		if !exists {
+			return 0, nil
+		}
 
-	usdBasedValue := (1 - math.Abs(1-usd)) * local
-	return usdBasedValue, nil
+		usdBasedValue := math.Round(((1-math.Abs(1-usd))*local)*100) / 100
+		return usdBasedValue, nil
+
+	} else {
+		return 1, nil
+	}
 }
