@@ -22,6 +22,10 @@ func main() {
 	router.GET("/api/stats/farthest", handleStatsFarthest)
 	router.GET("/api/stats/avg", handleStatsAVG)
 
+	if err := DB.Init("localhost", 6379); err != nil {
+		panic(err)
+	}
+
 	log.Println("Service running")
 	log.Println("Open browser in http://localhost:5000")
 	router.Run(":5000")
