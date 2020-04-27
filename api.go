@@ -13,13 +13,14 @@ const buenosAiresLat = -34.6131516
 const buenosAiresLng = -58.3772316
 
 type APIResult struct {
-	CountryName string  `json:"countryName"`
-	CountryCode string  `json:"countryCode"`
-	Distance    float64 `json:"distance"`
-	Latitude    float64 `json:"latitude"`
-	Longitude   float64 `json:"longitude"`
-	Currency    string  `json:"currency"`
-	USDValue    float64 `json:"usdValue"`
+	CountryName  string  `json:"countryName"`
+	CountryCode  string  `json:"countryCode"`
+	Distance     float64 `json:"distance"`
+	DistanceUnit string  `json:"distanceUnit"`
+	Latitude     float64 `json:"latitude"`
+	Longitude    float64 `json:"longitude"`
+	Currency     string  `json:"currency"`
+	USDValue     float64 `json:"usdValue"`
 }
 
 func handleIPInfo(c *gin.Context) {
@@ -45,13 +46,14 @@ func handleIPInfo(c *gin.Context) {
 
 	dist := distance(buenosAiresLat, buenosAiresLng, cinfo.Latlng[0], cinfo.Latlng[1], "K")
 	out := APIResult{
-		CountryCode: cinfo.Alpha3Code,
-		CountryName: cinfo.Name,
-		Distance:    dist,
-		Latitude:    cinfo.Latlng[0],
-		Longitude:   cinfo.Latlng[1],
-		Currency:    cinfo.Currencies[0].Code,
-		USDValue:    usdValue,
+		CountryCode:  cinfo.Alpha3Code,
+		CountryName:  cinfo.Name,
+		Distance:     dist,
+		DistanceUnit: "km",
+		Latitude:     cinfo.Latlng[0],
+		Longitude:    cinfo.Latlng[1],
+		Currency:     cinfo.Currencies[0].Code,
+		USDValue:     usdValue,
 	}
 
 	go updateStatsForCountry(dist, "ARG:BA", cinfo)
@@ -89,9 +91,14 @@ func getCountryUSDValue(cinfo *CountryInfo) (float64, error) {
 	}
 
 	//esta api en su version gratuita siempre devuelve cotizaciones con base en euros. Convierto a USD de ser necesario
+	usd, exists := data.Rates["USD"]
+	if !exists {
+		return 0, nil
+	}
+
 	localCurrency := cinfo.Currencies[0].Code
 	if localCurrency == "EUR" {
-		return data.Rates["USD"], nil
+		return usd, nil
 
 	} else if localCurrency == "USD" {
 		return 1, nil
@@ -102,11 +109,6 @@ func getCountryUSDValue(cinfo *CountryInfo) (float64, error) {
 		if !exists {
 			return 0, nil
 		}
-		usd, exists := data.Rates["USD"]
-		if !exists {
-			return 0, nil
-		}
-
 		usdBasedValue := math.Round(((1-math.Abs(1-usd))*local)*100) / 100
 		return usdBasedValue, nil
 	}
