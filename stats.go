@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strconv"
 )
 
 const nearestCountryKey = "stats:country:nearest:%s"       //nearest to country %s
@@ -39,8 +41,42 @@ func handleStatsAVG(c *gin.Context) {
 	s := DB.Session()
 	defer s.Close()
 
-	//TODO:
 	//sort stats:requests:countries by nosort get # get stats:request:country:*
+	values, err := redis.Values(s.Raw("SORT", countriesRequestsSetKey,
+		"BY", "nosort",
+		"GET", "#",
+		"GET", "stats:request:country:*"))
+
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	var totalRequestsCount int
+	var partialAvg float64
+	for n := 0; n < len(values); n += 2 {
+
+		//values[n] = country CODE
+		//values[n+1] = requests made
+
+		countryCode := string(values[n].([]uint8))
+		cinfo, _ := getCountryInfo(countryCode)
+		if len(cinfo.Alpha3Code) == 0 {
+			continue
+		}
+
+		dist := distance(buenosAiresLat, buenosAiresLng, cinfo.Latlng[0], cinfo.Latlng[1], "K")
+		countryRequests, _ := strconv.Atoi(string(values[n+1].([]uint8)))
+		partialAvg += dist * float64(countryRequests)
+		totalRequestsCount += countryRequests
+	}
+	averageDistance := partialAvg / float64(totalRequestsCount)
+
+	type ret struct {
+		AVG           float64 `json:"avg"`
+		TotalRequests int     `json:"totalRequests"`
+	}
+	c.JSON(200, ret{AVG: averageDistance, TotalRequests: totalRequestsCount})
 }
 
 func getStoredCountryDistance(key string, from string) (*countryStat, error) {

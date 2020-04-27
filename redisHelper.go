@@ -49,6 +49,10 @@ func (rs redisSession) HGETALL(key string, out interface{}) error {
 	return err
 }
 
+func (rs redisSession) Raw(cmd string, args ...interface{}) (reply interface{}, err error) {
+	return rs.conn.Do(cmd, args...)
+}
+
 func (rs redisSession) HMSET(key string, data interface{}) error {
 	_, err := rs.conn.Do("HMSET", redis.Args{}.Add(key).AddFlat(data)...)
 	return err

@@ -57,7 +57,8 @@
 
         function doGetAverage() {
             getStats("/api/stats/avg", {}, $('#stats_results'), function(data) {
-                return '';
+                return 'Average: ' + data.avg + ' km\n' +
+                       'Total requests:' + data.totalRequests;
             });
         }
 
