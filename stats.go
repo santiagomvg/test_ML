@@ -5,7 +5,6 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	"log"
-	"net/http"
 	"strconv"
 )
 
@@ -23,7 +22,7 @@ func handleStatsNearest(c *gin.Context) {
 
 	stat, err := getStoredCountryDistance(nearestCountryKey, "ARG:BA")
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		abort(c, 500, err)
 		return
 	}
 	c.JSON(200, stat)
@@ -32,7 +31,7 @@ func handleStatsNearest(c *gin.Context) {
 func handleStatsFarthest(c *gin.Context) {
 	stat, err := getStoredCountryDistance(farthestCountryKey, "ARG:BA")
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		abort(c, 500, err)
 		return
 	}
 	c.JSON(200, stat)
@@ -49,7 +48,7 @@ func handleStatsAVG(c *gin.Context) {
 		"GET", "stats:request:country:*"))
 
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		abort(c, 500, err)
 		return
 	}
 
@@ -113,7 +112,7 @@ func updateStatsForCountry(distance float64, fromGeoLocationCode string, cinfo *
 			defer s.Close()
 
 			key := fmt.Sprintf(nearestCountryKey, fromGeoLocationCode)
-			s.HMSET(key, stat)
+			_ = s.HMSET(key, stat)
 		}
 	}
 
@@ -126,13 +125,13 @@ func updateStatsForCountry(distance float64, fromGeoLocationCode string, cinfo *
 			defer s.Close()
 
 			key := fmt.Sprintf(farthestCountryKey, fromGeoLocationCode)
-			s.HMSET(key, stat)
+			_ = s.HMSET(key, stat)
 		}
 	}
 
 	s := DB.Session()
 	defer s.Close()
 
-	s.SetADD(countriesRequestsSetKey, cinfo.Alpha3Code)
-	s.INC(fmt.Sprintf(countryRequestCount, cinfo.Alpha3Code))
+	_ = s.SetADD(countriesRequestsSetKey, cinfo.Alpha3Code)
+	_ = s.INC(fmt.Sprintf(countryRequestCount, cinfo.Alpha3Code))
 }

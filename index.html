@@ -90,6 +90,9 @@
                 contentType : 'application/json',
                 success: function(data) {
                     target.html(onDataText(data));
+                },
+                error: function(e) {
+                    alert('error ' + e.responseJSON.status + ': ' + e.responseJSON.error);
                 }
             });
         }

@@ -37,19 +37,19 @@ func handleIPInfo(c *gin.Context) {
 	ip, _ := c.GetQuery("ipAddress")
 	ccode, err := getCountryCodeFromIP(ip)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		abort(c, 500, err)
 		return
 	}
 
 	cinfo, err := getCountryInfo(ccode)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		abort(c, 500, err)
 		return
 	}
 
 	usdValue, err := getCountryUSDValue(cinfo)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		abort(c, 500, err)
 		return
 	}
 
@@ -222,4 +222,16 @@ func getCountryUSDValue(cinfo *CountryInfo) (float64, error) {
 		return usdBasedValue, nil
 	}
 
+}
+
+func abort(c *gin.Context, status int, e error) {
+
+	type jsonErr struct {
+		Status int    `json:"status"`
+		Error  string `json:"error"`
+	}
+	c.AbortWithStatusJSON(status, &jsonErr{
+		Status: status,
+		Error:  e.Error(),
+	})
 }

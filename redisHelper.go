@@ -40,7 +40,7 @@ type redisSession struct {
 }
 
 func (rs redisSession) Close() {
-	rs.conn.Close()
+	_ = rs.conn.Close()
 }
 
 func (rs redisSession) HGETALL(key string, out interface{}) error {
