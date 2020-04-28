@@ -15,6 +15,7 @@ import (
 const buenosAiresLat = -34.6131516
 const buenosAiresLng = -58.3772316
 const countryInfoCacheKey = "cache:country:%s" //%s=country code
+const currencyInfoCacheKey = "cache:currency:global"
 
 type APIResult struct {
 	CurrentTime  string      `json:"currentTime"`
@@ -149,7 +150,8 @@ func getCountryInfo(countryCode string) (*CountryInfo, error) {
 			if err := s.StoreJson(key, cinfo); err != nil {
 				panic(err) //lo atrapa el recover
 			}
-			_ = s.ExpiresAt(key, time.Now().Add(24*time.Hour)) //cache por pais valido durante un dia
+			//cache por pais valido durante un dia
+			_ = s.ExpiresAt(key, time.Now().Add(24*time.Hour))
 		}(cinfo)
 	}
 	return &cinfo, err
@@ -157,15 +159,48 @@ func getCountryInfo(countryCode string) (*CountryInfo, error) {
 
 func getCountryUSDValue(cinfo *CountryInfo) (float64, error) {
 
-	var data Currency
-	url := "http://data.fixer.io/api/latest?access_key=fea0cfce5557c66f2a198a58103e04c2"
-	err := Net.Call(http.MethodGet, url, &data)
-	if err != nil {
-		return 0, err
+	s := DB.Session()
+	defer s.Close()
+
+	//intento levantar informacion de cotizaciones cacheadas
+	var currency Currency
+	if err := s.ReadJson(currencyInfoCacheKey, &currency); err != nil {
+		log.Printf("cache missed for currencies: %v", err)
+	}
+	s.Close()
+
+	if len(currency.Base) == 0 {
+
+		//no tengo currency cacheada, lo pido remotamente
+		url := "http://data.fixer.io/api/latest?access_key=fea0cfce5557c66f2a198a58103e04c2"
+		err := Net.Call(http.MethodGet, url, &currency)
+		if err != nil {
+			return 0, err
+		}
+
+		//cacheamos lo obtenido por la api pero en background
+		go func(currency Currency) {
+
+			defer func() {
+				if e := recover(); e != nil {
+					log.Printf("currency cache insert error %v", e)
+				}
+			}()
+
+			s := DB.Session()
+			defer s.Close()
+			if err := s.StoreJson(currencyInfoCacheKey, &currency); err != nil {
+				panic(err) //lo atrapa el recover
+			}
+
+			//cache de cotizaciones dura media hora
+			_ = s.ExpiresAt(currencyInfoCacheKey, time.Now().Add(30*time.Minute))
+		}(currency)
+
 	}
 
 	//esta api en su version gratuita siempre devuelve cotizaciones con base en euros. Convierto a USD de ser necesario
-	usd, exists := data.Rates["USD"]
+	usd, exists := currency.Rates["USD"]
 	if !exists {
 		return 0, nil
 	}
@@ -179,11 +214,12 @@ func getCountryUSDValue(cinfo *CountryInfo) (float64, error) {
 
 	} else {
 
-		local, exists := data.Rates[localCurrency]
+		local, exists := currency.Rates[localCurrency]
 		if !exists {
 			return 0, nil
 		}
 		usdBasedValue := math.Round(((1-math.Abs(1-usd))*local)*100) / 100
 		return usdBasedValue, nil
 	}
+
 }
