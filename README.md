@@ -15,13 +15,13 @@ cd test_ML<br/>
 editar config.json para apuntar a un servidor de Redis
 
 go get -t<br/>
-go run main.go<br/>
+go run *.go<br/>
 
 Abrir browser en http://localhost:5000
 
 ###Arquitectura de desarrollo
-Linux Mint 19 - 64bits <br/>
-GO 1.42.2 <br/>
+Linux Mint 19.3 - 64bits <br/>
+GO 1.14.2 <br/>
 Redis 4.0.9
 
 ###Dependencias
