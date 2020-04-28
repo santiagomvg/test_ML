@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
+	"strings"
 	"time"
 )
 
@@ -51,6 +54,30 @@ func (rs redisSession) HGETALL(key string, out interface{}) error {
 
 func (rs redisSession) Raw(cmd string, args ...interface{}) (reply interface{}, err error) {
 	return rs.conn.Do(cmd, args...)
+}
+
+func (rs redisSession) StoreJson(key string, data interface{}) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(data); err != nil {
+		return err
+	}
+	_, err := rs.conn.Do("HSET", key, "json", buf.Bytes())
+	return err
+}
+
+func (rs redisSession) ReadJson(key string, out interface{}) error {
+
+	reply, err := redis.Values(rs.conn.Do("HMGET", key, "json"))
+	if err != nil {
+		return err
+	}
+
+	var jsonData string
+	if _, err := redis.Scan(reply, &jsonData); err != nil {
+		return err
+	}
+	return json.NewDecoder(strings.NewReader(jsonData)).Decode(out)
 }
 
 func (rs redisSession) HMSET(key string, data interface{}) error {

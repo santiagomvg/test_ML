@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 	"strconv"
 )
@@ -94,6 +95,13 @@ func getStoredCountryDistance(key string, from string) (*countryStat, error) {
 }
 
 func updateStatsForCountry(distance float64, fromGeoLocationCode string, cinfo *CountryInfo) {
+
+	//defer con recover() porque se ejecuta en goroutine y un panic me mataria el servicio
+	defer func() {
+		if e := recover(); e != nil {
+			log.Printf("updateStatsForCountry error %v", e)
+		}
+	}()
 
 	//TODO: meter todo en go funcs individuales?
 	stat, err := getStoredCountryDistance(nearestCountryKey, fromGeoLocationCode)

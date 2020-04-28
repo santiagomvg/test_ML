@@ -14,6 +14,7 @@ import (
 
 const buenosAiresLat = -34.6131516
 const buenosAiresLng = -58.3772316
+const countryInfoCacheKey = "cache:country:%s" //%s=country code
 
 type APIResult struct {
 	CurrentTime  string      `json:"currentTime"`
@@ -116,10 +117,42 @@ func getCountryCodeFromIP(ipStr string) (string, error) {
 
 func getCountryInfo(countryCode string) (*CountryInfo, error) {
 
-	var data CountryInfo
-	url := fmt.Sprintf("https://restcountries.eu/rest/v2/alpha/%s", countryCode)
-	err := Net.Call(http.MethodGet, url, &data)
-	return &data, err
+	s := DB.Session()
+	defer s.Close()
+
+	//intento levantar informacion del pais cacheada
+	var cinfo CountryInfo
+	key := fmt.Sprintf(countryInfoCacheKey, countryCode)
+	if err := s.ReadJson(key, &cinfo); err != nil {
+		log.Printf("cache missed for %s: %v", countryCode, err)
+	}
+	s.Close()
+
+	var err error
+	if len(cinfo.Alpha3Code) == 0 {
+
+		//no tengo countryInfo, lo pido remotamente
+		url := fmt.Sprintf("https://restcountries.eu/rest/v2/alpha/%s", countryCode)
+		err = Net.Call(http.MethodGet, url, &cinfo)
+
+		//cacheamos lo obtenido por la api pero en background
+		go func(cinfo CountryInfo) {
+
+			defer func() {
+				if e := recover(); e != nil {
+					log.Printf("countryInfo cache insert error %v", e)
+				}
+			}()
+
+			s := DB.Session()
+			defer s.Close()
+			if err := s.StoreJson(key, cinfo); err != nil {
+				panic(err) //lo atrapa el recover
+			}
+			_ = s.ExpiresAt(key, time.Now().Add(24*time.Hour)) //cache por pais valido durante un dia
+		}(cinfo)
+	}
+	return &cinfo, err
 }
 
 func getCountryUSDValue(cinfo *CountryInfo) (float64, error) {
