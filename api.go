@@ -4,23 +4,30 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"log"
 	"math"
 	"net"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 const buenosAiresLat = -34.6131516
 const buenosAiresLng = -58.3772316
 
 type APIResult struct {
-	CountryName  string  `json:"countryName"`
-	CountryCode  string  `json:"countryCode"`
-	Distance     float64 `json:"distance"`
-	DistanceUnit string  `json:"distanceUnit"`
-	Latitude     float64 `json:"latitude"`
-	Longitude    float64 `json:"longitude"`
-	Currency     string  `json:"currency"`
-	USDValue     float64 `json:"usdValue"`
+	CurrentTime  string      `json:"currentTime"`
+	NativeName   string      `json:"nativeName"`
+	CountryName  string      `json:"countryName"`
+	CountryCode  string      `json:"countryCode"`
+	Languages    []Languages `json:"languages"`
+	Timezones    []string    `json:"timezones"`
+	Distance     float64     `json:"distance"`
+	DistanceUnit string      `json:"distanceUnit"`
+	Latitude     float64     `json:"latitude"`
+	Longitude    float64     `json:"longitude"`
+	Currency     string      `json:"currency"`
+	USDValue     float64     `json:"usdValue"`
 }
 
 func handleIPInfo(c *gin.Context) {
@@ -46,8 +53,12 @@ func handleIPInfo(c *gin.Context) {
 
 	dist := distance(buenosAiresLat, buenosAiresLng, cinfo.Latlng[0], cinfo.Latlng[1], "K")
 	out := APIResult{
-		CountryCode:  cinfo.Alpha3Code,
+		CurrentTime:  time.Now().Format(time.RFC822Z),
+		NativeName:   cinfo.NativeName,
+		CountryCode:  cinfo.Alpha2Code,
 		CountryName:  cinfo.Name,
+		Languages:    cinfo.Languages,
+		Timezones:    getLocalTimes(cinfo.Timezones),
 		Distance:     dist,
 		DistanceUnit: "km",
 		Latitude:     cinfo.Latlng[0],
@@ -58,6 +69,36 @@ func handleIPInfo(c *gin.Context) {
 
 	go updateStatsForCountry(dist, "ARG:BA", cinfo)
 	c.JSON(200, &out)
+}
+
+func getLocalTimes(tzOffsets []string) (ret []string) {
+
+	ret = make([]string, len(tzOffsets))
+	defer func() {
+		if e := recover(); e != nil {
+			log.Printf("localtime convert error %v", e)
+			return
+		}
+	}()
+
+	utcTime := time.Now().In(time.UTC)
+	for i, tzo := range tzOffsets {
+
+		if tzo == "UTC" {
+			ret[i] = utcTime.Format(time.Kitchen) + " UTC"
+
+		} else if len(tzo) > 3 && tzo[:3] == "UTC" && len(tzo) > 5 {
+			ofsStr := tzo[3:][:3]
+			ofs, err := strconv.Atoi(ofsStr)
+			if err != nil {
+				ret[i] = ""
+			} else {
+				t := utcTime.Add(time.Duration(ofs) * time.Hour)
+				ret[i] = t.Format(time.Kitchen) + " UTC" + ofsStr
+			}
+		}
+	}
+	return ret
 }
 
 func getCountryCodeFromIP(ipStr string) (string, error) {

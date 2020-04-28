@@ -32,12 +32,28 @@
         function doSubmitIP() {
 
             getStats("/api/ipinfo", { ipAddress: $('#ip').val() }, $('#content'), function(data) {
-                return 'Country: ' + data.countryName + '\n' +
+
+                var timezones = '';
+                for(i = 0; i < data.timezones.length; i++) {
+                    timezones += data.timezones[i] + ' / ';
+                }
+
+                var languages = '';
+                for(i = 0; i < data.languages.length; i++) {
+                    languages += data.languages[i].name + ' (' + data.languages[i].iso639_1 + ') ';
+                }
+
+                return 'Local server date: ' + data.currentTime + '\n' +
+                    'Country: ' + data.nativeName + ' (' + data.countryName + ') \n' +
                     'Code: ' + data.countryCode + '\n' +
                     'Distance: ' + data.distance + ' ' + data.distanceUnit + '\n' +
+                    'Languages: ' + languages + '\n' +
+                    'Timezones: ' + timezones + '\n' +
                     'Lat/Lng: ' + data.latitude + '/' + data.longitude + '\n' +
                     'Currency: ' + data.currency + '\n' +
                     '1 USD = ' + data.usdValue + ' ' + data.currency;
+
+
             });
         }
 
